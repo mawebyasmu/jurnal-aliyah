@@ -23,7 +23,8 @@ import {
   RefreshCw,
   BookOpen,
   School,
-  UserCheck
+  UserCheck,
+  FileText
 } from 'lucide-react';
 import { AttendanceRecord, TeachingLog, User, SystemMetrics } from '../types';
 import { AttendanceSettings } from './AttendanceSettings';
@@ -32,10 +33,11 @@ import { ScheduleConfiguration } from './ScheduleConfiguration';
 import { SchoolProfile } from './SchoolProfile';
 import { UserManagement } from './UserManagement';
 import { AcademicSettings } from './AcademicSettings';
+import { ReportsAnalytics } from './ReportsAnalytics';
 import { dataService } from '../services/dataService';
 
 export const AdminDashboard: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'dashboard' | 'attendance-settings' | 'class-management' | 'schedule-config' | 'school-profile' | 'user-management' | 'academic-settings'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'attendance-settings' | 'class-management' | 'schedule-config' | 'school-profile' | 'user-management' | 'academic-settings' | 'reports'>('dashboard');
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [teachingLogs, setTeachingLogs] = useState<TeachingLog[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -287,6 +289,10 @@ export const AdminDashboard: React.FC = () => {
     return <AcademicSettings onBack={() => setCurrentView('dashboard')} />;
   }
 
+  if (currentView === 'reports') {
+    return <ReportsAnalytics onBack={() => setCurrentView('dashboard')} />;
+  }
+
   const stats = getAttendanceStats();
   const teachingStats = getTeachingStats();
   const departmentStats = getDepartmentStats();
@@ -313,6 +319,18 @@ export const AdminDashboard: React.FC = () => {
             >
               <BarChart3 className="h-5 w-5 mr-3" />
               Dashboard
+            </button>
+            
+            <button
+              onClick={() => setCurrentView('reports')}
+              className={`w-full flex items-center px-3 py-2 mt-2 text-sm font-medium rounded-lg transition-colors ${
+                currentView === 'reports'
+                  ? 'bg-red-50 text-red-700 border border-red-200'
+                  : 'text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <FileText className="h-5 w-5 mr-3" />
+              Laporan & Analitik
             </button>
             
             <button
@@ -647,6 +665,31 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-2xl font-bold text-rose-600">{teachingStats.studentAttendanceRate.toFixed(1)}%</p>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Quick Access to Reports */}
+          <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-xl p-6 mb-8 border border-red-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-red-900 mb-2">Laporan & Analitik</h3>
+                <p className="text-red-700 mb-4">
+                  Akses laporan komprehensif kehadiran guru, jurnal mengajar, dan analisis performa
+                </p>
+                <div className="flex flex-wrap gap-2 text-sm text-red-800">
+                  <span className="bg-red-200 px-2 py-1 rounded">📊 Laporan Kehadiran</span>
+                  <span className="bg-red-200 px-2 py-1 rounded">📚 Laporan Jurnal Mengajar</span>
+                  <span className="bg-red-200 px-2 py-1 rounded">📈 Analisis Performa</span>
+                  <span className="bg-red-200 px-2 py-1 rounded">📋 Export Data</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setCurrentView('reports')}
+                className="flex items-center px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                <FileText className="h-5 w-5 mr-2" />
+                Buka Laporan
+              </button>
             </div>
           </div>
 
