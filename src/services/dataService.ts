@@ -1,4 +1,4 @@
-import { User, AttendanceRecord, TeachingLog, ClassSchedule } from '../types';
+import { User, AttendanceRecord, TeachingLog, ClassSchedule, Student, StudentAttendance, Class } from '../types';
 
 export interface SystemSettings {
   attendance: {
@@ -48,17 +48,6 @@ export interface SystemSettings {
     mobileAppEnabled: boolean;
     twoFactorAuth: boolean;
   };
-}
-
-export interface Class {
-  id: string;
-  name: string;
-  capacity: number;
-  room: string;
-  teacherId: string;
-  subjects: string[];
-  students: number;
-  schedule: ClassSchedule[];
 }
 
 export interface Subject {
@@ -341,6 +330,142 @@ class DataService {
     return true;
   }
 
+  // Student Management
+  getStudents(): Student[] {
+    const cached = this.getCache('students');
+    if (cached) return cached;
+
+    const students = localStorage.getItem('students');
+    if (students) {
+      const parsed = JSON.parse(students);
+      this.setCache('students', parsed);
+      return parsed;
+    }
+    
+    const defaultStudents: Student[] = [
+      {
+        id: '1',
+        name: 'Ahmad Rizki Pratama',
+        nis: '2024001',
+        classId: '1',
+        email: 'ahmad.rizki@student.sch.id',
+        phone: '081234567801',
+        parentName: 'Budi Pratama',
+        parentPhone: '081234567802',
+        birthDate: '2007-03-15',
+        gender: 'male',
+        status: 'active',
+        enrollmentDate: '2024-07-15'
+      },
+      {
+        id: '2',
+        name: 'Siti Nurhaliza Putri',
+        nis: '2024002',
+        classId: '1',
+        email: 'siti.nurhaliza@student.sch.id',
+        phone: '081234567803',
+        parentName: 'Hasan Putri',
+        parentPhone: '081234567804',
+        birthDate: '2007-05-20',
+        gender: 'female',
+        status: 'active',
+        enrollmentDate: '2024-07-15'
+      },
+      {
+        id: '3',
+        name: 'Muhammad Fajar Sidiq',
+        nis: '2024003',
+        classId: '1',
+        email: 'fajar.sidiq@student.sch.id',
+        phone: '081234567805',
+        parentName: 'Sidiq Rahman',
+        parentPhone: '081234567806',
+        birthDate: '2007-01-10',
+        gender: 'male',
+        status: 'active',
+        enrollmentDate: '2024-07-15'
+      },
+      {
+        id: '4',
+        name: 'Dewi Sartika Maharani',
+        nis: '2024004',
+        classId: '1',
+        email: 'dewi.sartika@student.sch.id',
+        phone: '081234567807',
+        parentName: 'Maharani Dewi',
+        parentPhone: '081234567808',
+        birthDate: '2007-08-25',
+        gender: 'female',
+        status: 'active',
+        enrollmentDate: '2024-07-15'
+      },
+      {
+        id: '5',
+        name: 'Andi Kurniawan',
+        nis: '2024005',
+        classId: '1',
+        email: 'andi.kurniawan@student.sch.id',
+        phone: '081234567809',
+        parentName: 'Kurniawan Andi',
+        parentPhone: '081234567810',
+        birthDate: '2007-11-30',
+        gender: 'male',
+        status: 'active',
+        enrollmentDate: '2024-07-15'
+      }
+    ];
+    
+    this.saveStudents(defaultStudents);
+    return defaultStudents;
+  }
+
+  saveStudents(students: Student[]): void {
+    localStorage.setItem('students', JSON.stringify(students));
+    this.setCache('students', students);
+    this.emit('studentsUpdated', students);
+  }
+
+  addStudent(student: Omit<Student, 'id'>): Student {
+    const students = this.getStudents();
+    const newStudent: Student = {
+      ...student,
+      id: Date.now().toString()
+    };
+    students.push(newStudent);
+    this.saveStudents(students);
+    this.auditLog('CREATE', 'student', `Student created: ${newStudent.name}`, newStudent);
+    return newStudent;
+  }
+
+  updateStudent(id: string, updates: Partial<Student>): Student | null {
+    const students = this.getStudents();
+    const index = students.findIndex(s => s.id === id);
+    if (index === -1) return null;
+    
+    const oldStudent = { ...students[index] };
+    students[index] = { ...students[index], ...updates };
+    this.saveStudents(students);
+    this.auditLog('UPDATE', 'student', `Student updated: ${students[index].name}`, { old: oldStudent, new: students[index] });
+    return students[index];
+  }
+
+  deleteStudent(id: string): boolean {
+    const students = this.getStudents();
+    const studentIndex = students.findIndex(s => s.id === id);
+    if (studentIndex === -1) return false;
+    
+    const deletedStudent = students[studentIndex];
+    students.splice(studentIndex, 1);
+    this.saveStudents(students);
+    this.auditLog('DELETE', 'student', `Student deleted: ${deletedStudent.name}`, deletedStudent);
+    return true;
+  }
+
+  getStudentsByClass(classId: string): Student[] {
+    const students = this.getStudents();
+    return students.filter(student => student.classId === classId && student.status === 'active');
+  }
+
   // Enhanced Class Management
   getClasses(): Class[] {
     const cached = this.getCache('classes');
@@ -361,7 +486,9 @@ class DataService {
         room: 'R.12', 
         teacherId: '1', 
         subjects: ['Matematika'], 
-        students: 34,
+        students: [],
+        academicYear: '2024/2025',
+        grade: 'XII',
         schedule: [
           { id: '1', subject: 'Matematika', class: 'XII IPA 1', time: '07:00-08:30', day: 'Senin', room: 'R.12' },
           { id: '2', subject: 'Matematika', class: 'XII IPA 1', time: '08:30-10:00', day: 'Rabu', room: 'R.12' }
@@ -374,7 +501,9 @@ class DataService {
         room: 'R.13', 
         teacherId: '3', 
         subjects: ['Fisika'], 
-        students: 33,
+        students: [],
+        academicYear: '2024/2025',
+        grade: 'XII',
         schedule: [
           { id: '3', subject: 'Fisika', class: 'XII IPA 2', time: '10:15-11:45', day: 'Senin', room: 'R.13' }
         ]
@@ -386,7 +515,9 @@ class DataService {
         room: 'R.15', 
         teacherId: '4', 
         subjects: ['Bahasa Indonesia'], 
-        students: 32,
+        students: [],
+        academicYear: '2024/2025',
+        grade: 'XII',
         schedule: [
           { id: '4', subject: 'Bahasa Indonesia', class: 'XII IPS 1', time: '13:00-14:30', day: 'Selasa', room: 'R.15' }
         ]
@@ -506,6 +637,53 @@ class DataService {
     return true;
   }
 
+  // Student Attendance Management
+  getStudentAttendance(): StudentAttendance[] {
+    const cached = this.getCache('studentAttendance');
+    if (cached) return cached;
+
+    const attendance = localStorage.getItem('studentAttendance');
+    const parsed = attendance ? JSON.parse(attendance) : [];
+    this.setCache('studentAttendance', parsed);
+    return parsed;
+  }
+
+  saveStudentAttendance(attendance: StudentAttendance[]): void {
+    localStorage.setItem('studentAttendance', JSON.stringify(attendance));
+    this.setCache('studentAttendance', attendance);
+    this.emit('studentAttendanceUpdated', attendance);
+  }
+
+  addStudentAttendance(attendance: Omit<StudentAttendance, 'id' | 'timestamp'>): StudentAttendance {
+    const attendanceRecords = this.getStudentAttendance();
+    const newAttendance: StudentAttendance = {
+      ...attendance,
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString()
+    };
+    attendanceRecords.push(newAttendance);
+    this.saveStudentAttendance(attendanceRecords);
+    this.auditLog('CREATE', 'studentAttendance', `Student attendance recorded`, newAttendance);
+    return newAttendance;
+  }
+
+  updateStudentAttendance(id: string, updates: Partial<StudentAttendance>): StudentAttendance | null {
+    const attendanceRecords = this.getStudentAttendance();
+    const index = attendanceRecords.findIndex(a => a.id === id);
+    if (index === -1) return null;
+    
+    const oldAttendance = { ...attendanceRecords[index] };
+    attendanceRecords[index] = { ...attendanceRecords[index], ...updates };
+    this.saveStudentAttendance(attendanceRecords);
+    this.auditLog('UPDATE', 'studentAttendance', `Student attendance updated`, { old: oldAttendance, new: attendanceRecords[index] });
+    return attendanceRecords[index];
+  }
+
+  getStudentAttendanceByTeachingLog(teachingLogId: string): StudentAttendance[] {
+    const attendance = this.getStudentAttendance();
+    return attendance.filter(a => a.teachingLogId === teachingLogId);
+  }
+
   // Attendance Management with Real-time Updates
   getAttendanceRecords(): AttendanceRecord[] {
     const cached = this.getCache('attendance');
@@ -574,6 +752,18 @@ class DataService {
     this.saveTeachingLogs(logs);
     this.auditLog('CREATE', 'teachingLog', `Teaching log created`, newLog);
     return newLog;
+  }
+
+  updateTeachingLog(id: string, updates: Partial<TeachingLog>): TeachingLog | null {
+    const logs = this.getTeachingLogs();
+    const index = logs.findIndex(l => l.id === id);
+    if (index === -1) return null;
+    
+    const oldLog = { ...logs[index] };
+    logs[index] = { ...logs[index], ...updates };
+    this.saveTeachingLogs(logs);
+    this.auditLog('UPDATE', 'teachingLog', `Teaching log updated`, { old: oldLog, new: logs[index] });
+    return logs[index];
   }
 
   // Enhanced Analytics and Reports
@@ -674,7 +864,7 @@ class DataService {
   }
 
   // Advanced Export Functionality
-  exportData(type: 'attendance' | 'teaching' | 'users' | 'all', format: 'csv' | 'json' | 'excel' = 'csv', dateRange?: { start: string; end: string }) {
+  exportData(type: 'attendance' | 'teaching' | 'users' | 'students' | 'all', format: 'csv' | 'json' | 'excel' = 'csv', dateRange?: { start: string; end: string }) {
     const data: any = {};
     
     if (type === 'attendance' || type === 'all') {
@@ -694,6 +884,10 @@ class DataService {
     
     if (type === 'users' || type === 'all') {
       data.users = this.getUsers();
+    }
+
+    if (type === 'students' || type === 'all') {
+      data.students = this.getStudents();
     }
 
     if (format === 'json') {
@@ -721,6 +915,17 @@ class DataService {
         { key: 'nip', label: 'NIP' },
         { key: 'department', label: 'Departemen' },
         { key: 'role', label: 'Role' },
+        { key: 'status', label: 'Status' }
+      ]);
+    }
+
+    if (type === 'students') {
+      return this.convertToCSV(data.students, [
+        { key: 'id', label: 'ID' },
+        { key: 'name', label: 'Nama' },
+        { key: 'nis', label: 'NIS' },
+        { key: 'classId', label: 'Kelas ID' },
+        { key: 'gender', label: 'Jenis Kelamin' },
         { key: 'status', label: 'Status' }
       ]);
     }
@@ -787,9 +992,11 @@ class DataService {
       data: {
         settings: this.getSettings(),
         users: this.getUsers(),
+        students: this.getStudents(),
         classes: this.getClasses(),
         subjects: this.getSubjects(),
         attendance: this.getAttendanceRecords(),
+        studentAttendance: this.getStudentAttendance(),
         teachingLogs: this.getTeachingLogs(),
         auditLogs: this.getAuditLogs()
       }
@@ -821,6 +1028,10 @@ class DataService {
       if (backup.data.users && Array.isArray(backup.data.users)) {
         this.saveUsers(backup.data.users);
       }
+
+      if (backup.data.students && Array.isArray(backup.data.students)) {
+        this.saveStudents(backup.data.students);
+      }
       
       if (backup.data.classes && Array.isArray(backup.data.classes)) {
         this.saveClasses(backup.data.classes);
@@ -832,6 +1043,10 @@ class DataService {
       
       if (backup.data.attendance && Array.isArray(backup.data.attendance)) {
         this.saveAttendanceRecords(backup.data.attendance);
+      }
+
+      if (backup.data.studentAttendance && Array.isArray(backup.data.studentAttendance)) {
+        this.saveStudentAttendance(backup.data.studentAttendance);
       }
       
       if (backup.data.teachingLogs && Array.isArray(backup.data.teachingLogs)) {
@@ -860,6 +1075,7 @@ class DataService {
   private generateChecksum(): string {
     const data = {
       users: this.getUsers().length,
+      students: this.getStudents().length,
       attendance: this.getAttendanceRecords().length,
       classes: this.getClasses().length,
       subjects: this.getSubjects().length
@@ -925,12 +1141,15 @@ class DataService {
   // Performance Monitoring
   getSystemHealth(): { status: 'healthy' | 'warning' | 'critical'; metrics: any } {
     const users = this.getUsers();
+    const students = this.getStudents();
     const attendance = this.getAttendanceRecords();
     const logs = this.getAuditLogs();
     
     const metrics = {
       totalUsers: users.length,
       activeUsers: users.filter(u => u.status === 'active').length,
+      totalStudents: students.length,
+      activeStudents: students.filter(s => s.status === 'active').length,
       totalAttendanceRecords: attendance.length,
       recentAttendance: attendance.filter(r => 
         new Date(r.date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)

@@ -12,9 +12,12 @@ import {
   UserCheck,
   Clock,
   School,
-  GraduationCap
+  GraduationCap,
+  Search,
+  Filter
 } from 'lucide-react';
 import { dataService } from '../services/dataService';
+import { StudentManagement } from './StudentManagement';
 
 interface ClassManagementProps {
   onBack: () => void;
@@ -27,7 +30,7 @@ interface Class {
   room: string;
   teacherId: string;
   subjects: string[];
-  students: number;
+  students: any[];
   grade: string;
   academicYear: string;
 }
@@ -45,10 +48,12 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
   const [classes, setClasses] = useState<Class[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [showModal, setShowModal] = useState<'class' | 'subject' | null>(null);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'classes' | 'subjects'>('classes');
+  const [activeTab, setActiveTab] = useState<'classes' | 'subjects' | 'students'>('classes');
   const [loading, setLoading] = useState(false);
+  const [currentView, setCurrentView] = useState<'main' | 'students'>('main');
 
   const [classForm, setClassForm] = useState({
     name: '',
@@ -78,10 +83,12 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
       const classData = dataService.getClasses();
       const subjectData = dataService.getSubjects();
       const teacherData = dataService.getUsers().filter(u => u.role === 'teacher');
+      const studentData = dataService.getStudents();
       
       setClasses(classData);
       setSubjects(subjectData);
       setTeachers(teacherData);
+      setStudents(studentData);
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -109,7 +116,7 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
       room: classItem.room,
       teacherId: classItem.teacherId,
       subjects: classItem.subjects,
-      students: classItem.students,
+      students: classItem.students?.length || 0,
       grade: classItem.grade,
       academicYear: classItem.academicYear
     });
@@ -134,13 +141,25 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
     setLoading(true);
     
     try {
+      const classData = {
+        name: classForm.name,
+        capacity: classForm.capacity,
+        room: classForm.room,
+        teacherId: classForm.teacherId,
+        subjects: classForm.subjects,
+        students: [],
+        grade: classForm.grade,
+        academicYear: classForm.academicYear,
+        schedule: []
+      };
+
       if (editingItem) {
-        const updated = dataService.updateClass(editingItem.id, classForm);
+        const updated = dataService.updateClass(editingItem.id, classData);
         if (updated) {
           alert('Kelas berhasil diperbarui!');
         }
       } else {
-        const newClass = dataService.addClass(classForm);
+        const newClass = dataService.addClass(classData);
         alert('Kelas berhasil ditambahkan!');
       }
       
@@ -222,9 +241,17 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
     return teacher ? teacher.name : 'Tidak ada';
   };
 
+  const getStudentCount = (classId: string) => {
+    return students.filter(s => s.classId === classId && s.status === 'active').length;
+  };
+
   const departments = ['MIPA', 'IPS', 'Bahasa', 'Seni', 'Olahraga', 'Agama', 'Kewarganegaraan'];
   const grades = ['X', 'XI', 'XII'];
   const rooms = ['R.01', 'R.02', 'R.03', 'R.04', 'R.05', 'R.06', 'R.07', 'R.08', 'R.09', 'R.10', 'R.11', 'R.12', 'R.13', 'R.14', 'R.15', 'Lab Komputer', 'Lab Fisika', 'Lab Kimia', 'Lab Biologi'];
+
+  if (currentView === 'students') {
+    return <StudentManagement onBack={() => setCurrentView('main')} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -242,15 +269,19 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
               </button>
               <div>
                 <h1 className="text-xl font-semibold text-gray-900">Manajemen Kelas & Mata Pelajaran</h1>
-                <p className="text-sm text-gray-600">Kelola kelas, mata pelajaran, dan penugasan guru</p>
+                <p className="text-sm text-gray-600">Kelola kelas, mata pelajaran, dan siswa</p>
               </div>
             </div>
             <button
-              onClick={activeTab === 'classes' ? handleAddClass : handleAddSubject}
+              onClick={activeTab === 'classes' ? handleAddClass : 
+                      activeTab === 'subjects' ? handleAddSubject : 
+                      () => setCurrentView('students')}
               className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <Plus className="h-4 w-4 mr-2" />
-              {activeTab === 'classes' ? 'Tambah Kelas' : 'Tambah Mata Pelajaran'}
+              {activeTab === 'classes' ? 'Tambah Kelas' : 
+               activeTab === 'subjects' ? 'Tambah Mata Pelajaran' : 
+               'Kelola Siswa'}
             </button>
           </div>
         </div>
@@ -284,6 +315,17 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
                 <BookOpen className="h-4 w-4 inline mr-2" />
                 Mata Pelajaran
               </button>
+              <button
+                onClick={() => setActiveTab('students')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'students'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <GraduationCap className="h-4 w-4 inline mr-2" />
+                Data Siswa
+              </button>
             </nav>
           </div>
         </div>
@@ -303,6 +345,7 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Wali Kelas</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ruangan</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kapasitas</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Siswa</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mata Pelajaran</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
                   </tr>
@@ -310,7 +353,7 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
                 <tbody className="divide-y divide-gray-200">
                   {classes.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                         Belum ada kelas yang terdaftar
                       </td>
                     </tr>
@@ -333,9 +376,12 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
+                          {classItem.capacity} siswa
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900">
                           <div className="flex items-center">
                             <UserCheck className="h-4 w-4 text-gray-400 mr-1" />
-                            {classItem.students}/{classItem.capacity}
+                            {getStudentCount(classItem.id)}/{classItem.capacity}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
@@ -445,6 +491,49 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
             </div>
           </div>
         )}
+
+        {/* Students Tab */}
+        {activeTab === 'students' && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Data Siswa</h2>
+                <p className="text-sm text-gray-600 mt-1">Kelola informasi siswa dan penempatan kelas</p>
+              </div>
+              <button
+                onClick={() => setCurrentView('students')}
+                className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <GraduationCap className="h-4 w-4 mr-2" />
+                Kelola Siswa
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-blue-50 rounded-lg p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-600 mb-2">{students.length}</div>
+                  <div className="text-sm text-blue-800">Total Siswa</div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-6 text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-2">
+                    {students.filter(s => s.status === 'active').length}
+                  </div>
+                  <div className="text-sm text-green-800">Siswa Aktif</div>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-6 text-center">
+                  <div className="text-3xl font-bold text-purple-600 mb-2">{classes.length}</div>
+                  <div className="text-sm text-purple-800">Total Kelas</div>
+                </div>
+              </div>
+              
+              <div className="mt-6 text-center">
+                <p className="text-gray-600 mb-4">
+                  Klik tombol "Kelola Siswa" untuk menambah, mengedit, atau mengelola data siswa secara detail.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
@@ -542,20 +631,6 @@ export const ClassManagement: React.FC<ClassManagementProps> = ({ onBack }) => {
                     required
                     min="1"
                     max="50"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Jumlah Siswa Saat Ini
-                  </label>
-                  <input
-                    type="number"
-                    value={classForm.students}
-                    onChange={(e) => setClassForm(prev => ({ ...prev, students: parseInt(e.target.value) || 0 }))}
-                    min="0"
-                    max={classForm.capacity}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

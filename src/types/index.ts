@@ -14,6 +14,33 @@ export interface User {
   profileImage?: string;
 }
 
+export interface Student {
+  id: string;
+  name: string;
+  nis: string;
+  classId: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  parentName?: string;
+  parentPhone?: string;
+  birthDate?: string;
+  gender: 'male' | 'female';
+  profileImage?: string;
+  status: 'active' | 'inactive' | 'graduated' | 'transferred';
+  enrollmentDate: string;
+}
+
+export interface StudentAttendance {
+  id: string;
+  studentId: string;
+  teachingLogId: string;
+  status: 'present' | 'sick' | 'permission' | 'absent';
+  arrivalTime?: string;
+  notes?: string;
+  timestamp: string;
+}
+
 export interface AttendanceRecord {
   id: string;
   userId: string;
@@ -57,6 +84,7 @@ export interface TeachingLog {
   scheduleId: string;
   subject: string;
   class: string;
+  classId: string;
   topic: string;
   materials: string;
   attendance: number;
@@ -65,6 +93,13 @@ export interface TeachingLog {
   homework?: string;
   createdAt: string;
   updatedAt?: string;
+  studentAttendance?: StudentAttendance[];
+  attendanceSummary?: {
+    present: number;
+    sick: number;
+    permission: number;
+    absent: number;
+  };
   attachments?: Array<{
     id: string;
     name: string;
@@ -77,6 +112,19 @@ export interface TeachingLog {
     description: string;
     score?: number;
   };
+}
+
+export interface Class {
+  id: string;
+  name: string;
+  capacity: number;
+  room: string;
+  teacherId: string;
+  subjects: string[];
+  students: Student[];
+  academicYear: string;
+  grade: string;
+  schedule: ClassSchedule[];
 }
 
 export interface LocationConfig {
